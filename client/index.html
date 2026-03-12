@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Менеджер задач</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: #25252e;
+      --accent: #7c6af7;
+      --accent2: #c084fc;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* AUTH */
+    .auth-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse 80% 60% at 50% -20%, #2e1f6820, transparent),
+                  radial-gradient(ellipse 60% 40% at 80% 80%, #7c6af710, transparent);
+    }
+    .auth-card {
+      width: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .auth-logo { font-family: var(--font-head); font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+    .auth-logo span { color: var(--accent); }
+    .auth-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+    .auth-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .auth-tab {
+      flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-family: var(--font-body); font-size: 14px;
+      cursor: pointer; transition: all .2s;
+    }
+    .auth-tab.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: .05em; text-transform: uppercase; }
+    .field input {
+      width: 100%; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .btn-primary {
+      width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none;
+      border-radius: 10px; font-family: var(--font-head); font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: opacity .2s; margin-top: 8px;
+    }
+    .btn-primary:hover { opacity: .85; }
+    .error { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; }
+    .db-badge { display: flex; gap: 6px; margin-top: 20px; justify-content: center; }
+    .db-pill {
+      font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 1px solid;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .db-pill.mongo { border-color: #16a34a40; color: var(--green); background: #16a34a10; }
+    .db-pill.sqlite { border-color: #2563eb40; color: var(--blue); background: #2563eb10; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* APP LAYOUT */
+    .app { display: flex; height: 100vh; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 240px; background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 20px 12px; flex-shrink: 0;
+    }
+    .sidebar-logo { font-family: var(--font-head); font-size: 22px; font-weight: 800; padding: 8px 12px 20px; }
+    .sidebar-logo span { color: var(--accent); }
+    .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 8px 12px 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; color: var(--muted); font-size: 14px; transition: all .15s; margin-bottom: 2px;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: #7c6af720; color: var(--accent); }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-bottom { margin-top: auto; }
+    .user-card {
+      display: flex; align-items: center; gap: 10px; padding: 12px;
+      border-radius: 12px; background: var(--surface2); border: 1px solid var(--border);
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-head); font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+    .user-email { font-size: 11px; color: var(--muted); }
+    .logout-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px;
+      margin-top: 8px; padding: 6px 12px; border-radius: 8px; transition: all .15s; width: 100%; text-align: left;
+    }
+    .logout-btn:hover { color: var(--red); background: #f8717110; }
+
+    /* MAIN */
+    .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+    /* HEADER */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 28px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10;
+    }
+    .page-title { font-family: var(--font-head); font-size: 22px; font-weight: 700; }
+    .topbar-right { display: flex; gap: 10px; align-items: center; }
+    .btn-sm {
+      display: flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 10px;
+      font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .15s; border: 1px solid;
+    }
+    .btn-sm.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-sm.primary:hover { opacity: .85; }
+    .btn-sm.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
+    .btn-sm.ghost:hover { color: var(--text); border-color: var(--text); }
+    .btn-sm svg { width: 14px; height: 14px; }
+
+    /* CONTENT */
+    .content { padding: 24px 28px; flex: 1; }
+
+    /* STATS CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::after {
+      content: ''; position: absolute; bottom: -10px; right: -10px;
+      width: 50px; height: 50px; border-radius: 50%; opacity: .08;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .stat-num { font-family: var(--font-head); font-size: 32px; font-weight: 800; line-height: 1; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .stat-icon { position: absolute; top: 18px; right: 18px; opacity: .3; }
+    .stat-icon svg { width: 22px; height: 22px; }
+
+    /* FILTERS */
+    .filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 7px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all .15s;
+    }
+    .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .filter-btn:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+    .search-input {
+      flex: 1; min-width: 180px; max-width: 280px; padding: 8px 14px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 20px; color: var(--text); font-family: var(--font-body);
+      font-size: 13px; outline: none; transition: border-color .2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--muted); }
+
+    /* KANBAN */
+    .kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kanban-col {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px; min-height: 200px;
+    }
+    .col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .col-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .col-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .col-count { font-size: 11px; background: var(--surface2); padding: 2px 7px; border-radius: 10px; color: var(--muted); }
+
+    /* TASK CARD */
+    .task-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px; margin-bottom: 8px; cursor: pointer; transition: all .15s;
+      position: relative; overflow: hidden;
+    }
+    .task-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .task-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px;
+    }
+    .task-card.p-low::before { background: var(--green); }
+    .task-card.p-medium::before { background: var(--yellow); }
+    .task-card.p-high::before { background: #fb923c; }
+    .task-card.p-critical::before { background: var(--red); }
+    .task-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; padding-left: 8px; }
+    .task-meta { display: flex; gap: 6px; flex-wrap: wrap; padding-left: 8px; }
+    .tag { font-size: 10px; padding: 2px 7px; border-radius: 6px; }
+    .priority-tag { }
+    .priority-low { background: #16a34a20; color: var(--green); }
+    .priority-medium { background: #ca8a0420; color: var(--yellow); }
+    .priority-high { background: #ea580c20; color: #fb923c; }
+    .priority-critical { background: #dc262620; color: var(--red); }
+    .task-date { font-size: 11px; color: var(--muted); margin-top: 8px; padding-left: 8px; }
+    .task-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+    .task-card:hover .task-actions { opacity: 1; }
+    .task-action-btn {
+      width: 24px; height: 24px; border-radius: 6px; border: none; background: var(--surface);
+      color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s;
+    }
+    .task-action-btn:hover { background: var(--red); color: #fff; }
+    .task-action-btn.edit:hover { background: var(--accent); }
+    .task-action-btn svg { width: 12px; height: 12px; }
+
+    /* PROJECTS */
+    .projects-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .project-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 20px; cursor: pointer; transition: all .15s; position: relative; overflow: hidden;
+    }
+    .project-card:hover { transform: translateY(-2px); border-color: var(--border); box-shadow: 0 8px 30px #0006; }
+    .project-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .project-name { font-family: var(--font-head); font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .project-desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    .project-stats { display: flex; gap: 12px; }
+    .project-stat { font-size: 12px; color: var(--muted); }
+    .project-stat span { color: var(--text); font-weight: 500; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: #000a; z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      animation: fadeIn .15s;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 28px; width: 480px; max-height: 80vh; overflow-y: auto;
+      animation: slideUp .2s;
+    }
+    @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .modal-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; margin-bottom: 22px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .select {
+      width: 100%; padding: 11px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none;
+    }
+    .textarea {
+      width: 100%; padding: 11px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none;
+      resize: vertical; min-height: 80px;
+    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .btn-cancel {
+      padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-family: var(--font-body); cursor: pointer; transition: all .15s;
+    }
+    .btn-cancel:hover { color: var(--text); }
+    .btn-submit {
+      padding: 10px 20px; border-radius: 10px; border: none;
+      background: var(--accent); color: #fff; font-family: var(--font-head); font-weight: 700; cursor: pointer; transition: opacity .15s;
+    }
+    .btn-submit:hover { opacity: .85; }
+
+    /* DB INDICATOR */
+    .db-info {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border); font-size: 12px;
+    }
+    .db-info-dot { width: 7px; height: 7px; border-radius: 50%; animation: pulse 2s infinite; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .empty svg { width: 40px; height: 40px; margin: 0 auto 12px; opacity: .3; display: block; }
+    .empty-title { font-family: var(--font-head); font-size: 15px; color: var(--text); margin-bottom: 4px; }
+
+    /* LOADING */
+    .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .loading-wrap { display: flex; justify-content: center; padding: 40px; }
+
+    /* SCROLL */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* TOAST */
+    .toasts { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 16px; border-radius: 12px; font-size: 13px; border: 1px solid;
+      animation: slideIn .2s;
+      min-width: 220px;
+    }
+    @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    .toast.success { background: #16a34a20; border-color: #16a34a40; color: var(--green); }
+    .toast.error { background: #dc262620; border-color: #dc262640; color: var(--red); }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .kanban { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.10/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+const API = 'http://localhost:5000/api';
+
+// ─── API helpers ─────────────────────────────────────────────
+const api = {
+  headers: () => {
+    const t = localStorage.getItem('token');
+    return { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+  },
+  get: url => fetch(API + url, { headers: api.headers() }).then(r => r.json()),
+  post: (url, body) => fetch(API + url, { method: 'POST', headers: api.headers(), body: JSON.stringify(body) }).then(r => r.json()),
+  put: (url, body) => fetch(API + url, { method: 'PUT', headers: api.headers(), body: JSON.stringify(body) }).then(r => r.json()),
+  del: url => fetch(API + url, { method: 'DELETE', headers: api.headers() }).then(r => r.json()),
+};
+
+// ─── Icons ────────────────────────────────────────────────────
+const Icon = ({ name, ...p }) => {
+  const icons = {
+    tasks: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+    projects: <><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></>,
+    stats: <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>,
+    plus: <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    trash: <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></>,
+    edit: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+    check: <><polyline points="20 6 9 17 4 12"/></>,
+    x: <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    search: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
+    db: <><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></>,
+    logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>{icons[name]}</svg>;
+};
+
+// ─── Toast ────────────────────────────────────────────────────
+let addToastGlobal = null;
+function Toasts() {
+  const [toasts, setToasts] = useState([]);
+  addToastGlobal = (msg, type = 'success') => {
+    const id = Date.now();
+    setToasts(p => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3000);
+  };
+  return <div className="toasts">{toasts.map(t => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}</div>;
+}
+const toast = (msg, type) => addToastGlobal?.(msg, type);
+
+// ─── Auth Page ─────────────────────────────────────────────────
+function AuthPage({ onLogin }) {
+  const [tab, setTab] = useState('login');
+  const [form, setForm] = useState({ username: '', email: '', password: '' });
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    setErr(''); setLoading(true);
+    try {
+      const endpoint = tab === 'login' ? '/auth/login' : '/auth/register';
+      const res = await api.post(endpoint, form);
+      if (res.error) { setErr(res.error); return; }
+      localStorage.setItem('token', res.token);
+      onLogin(res.user);
+    } catch { setErr('Ошибка сервера. Запущен ли бэкенд?'); }
+    finally { setLoading(false); }
+  };
+
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  const onKey = e => e.key === 'Enter' && handle();
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-logo">Task<span>Flow</span></div>
+        <div className="auth-sub">Управление задачами через MongoDB + SQLite</div>
+        <div className="auth-tabs">
+          <button className={`auth-tab ${tab === 'login' ? 'active' : ''}`} onClick={() => setTab('login')}>Войти</button>
+          <button className={`auth-tab ${tab === 'register' ? 'active' : ''}`} onClick={() => setTab('register')}>Регистрация</button>
+        </div>
+        {tab === 'register' && (
+          <div className="field">
+            <label>Имя пользователя</label>
+            <input value={form.username} onChange={set('username')} placeholder="ivanov" onKeyDown={onKey} />
+          </div>
+        )}
+        <div className="field">
+          <label>Электронная почта</label>
+          <input type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" onKeyDown={onKey} />
+        </div>
+        <div className="field">
+          <label>Пароль</label>
+          <input type="password" value={form.password} onChange={set('password')} placeholder="••••••••" onKeyDown={onKey} />
+        </div>
+        <button className="btn-primary" onClick={handle} disabled={loading}>
+          {loading ? 'Загрузка...' : tab === 'login' ? 'Войти →' : 'Создать аккаунт →'}
+        </button>
+        {err && <div className="error">{err}</div>}
+        <div className="db-badge">
+          <div className="db-pill mongo"><div className="dot" />MongoDB — Задачи</div>
+          <div className="db-pill sqlite"><div className="dot" />SQLite — Пользователи</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Task Modal ────────────────────────────────────────────────
+function TaskModal({ task, projects, onClose, onSave }) {
+  const [form, setForm] = useState(task || {
+    title: '', description: '', status: 'todo', priority: 'medium',
+    projectId: '', tags: '', dueDate: ''
+  });
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  const save = async () => {
+    if (!form.title.trim()) return;
+    const body = { ...form, tags: typeof form.tags === 'string' ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : form.tags };
+    if (!body.projectId) delete body.projectId;
+    if (!body.dueDate) delete body.dueDate;
+    await onSave(body);
+    onClose();
+  };
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">{task ? 'Редактировать задачу' : 'Новая задача'}</div>
+        <div className="field"><label>Название</label><input value={form.title} onChange={set('title')} placeholder="Название задачи..." autoFocus /></div>
+        <div className="field"><label>Описание</label><textarea className="textarea" value={form.description} onChange={set('description')} placeholder="Подробности..." /></div>
+        <div className="form-row">
+          <div className="field">
+            <label>Статус</label>
+            <select className="select" value={form.status} onChange={set('status')}>
+              <option value="todo">К выполнению</option>
+              <option value="in_progress">В работе</option>
+              <option value="review">На проверке</option>
+              <option value="done">Готово</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Приоритет</label>
+            <select className="select" value={form.priority} onChange={set('priority')}>
+              <option value="low">Низкий</option>
+              <option value="medium">Средний</option>
+              <option value="high">Высокий</option>
+              <option value="critical">Критический</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="field">
+            <label>Проект</label>
+            <select className="select" value={form.projectId || ''} onChange={set('projectId')}>
+              <option value="">Без проекта</option>
+              {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div className="field"><label>Срок выполнения</label><input type="date" className="select" value={form.dueDate ? form.dueDate.split('T')[0] : ''} onChange={set('dueDate')} /></div>
+        </div>
+        <div className="field"><label>Метки (через запятую)</label><input value={Array.isArray(form.tags) ? form.tags.join(', ') : form.tags} onChange={set('tags')} placeholder="дизайн, бэкенд, баг" /></div>
+        <div className="modal-actions">
+          <button className="btn-cancel" onClick={onClose}>Отмена</button>
+          <button className="btn-submit" onClick={save}>Сохранить</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Project Modal ─────────────────────────────────────────────
+function ProjectModal({ onClose, onSave }) {
+  const COLORS = ['#7c6af7','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4'];
+  const [form, setForm] = useState({ name: '', description: '', color: COLORS[0] });
+  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }));
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">Новый проект</div>
+        <div className="field"><label>Название</label><input value={form.name} onChange={set('name')} placeholder="Название проекта..." autoFocus /></div>
+        <div className="field"><label>Описание</label><textarea className="textarea" value={form.description} onChange={set('description')} placeholder="О чём этот проект?" /></div>
+        <div className="field">
+          <label>Цвет</label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            {COLORS.map(c => <div key={c} onClick={() => setForm(p=>({...p,color:c}))} style={{ width: 28, height: 28, borderRadius: 8, background: c, cursor: 'pointer', border: form.color===c ? '3px solid #fff' : '3px solid transparent' }} />)}
+          </div>
+        </div>
+        <div className="modal-actions">
+          <button className="btn-cancel" onClick={onClose}>Отмена</button>
+          <button className="btn-submit" onClick={() => { if(form.name) { onSave(form); onClose(); } }}>Создать проект</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tasks View ────────────────────────────────────────────────
+function TasksView({ projects }) {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const res = await api.get('/tasks');
+    setTasks(Array.isArray(res) ? res : []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const save = async (body) => {
+    if (modal?._id) {
+      await api.put(`/tasks/${modal._id}`, body);
+      toast('Задача обновлена');
+    } else {
+      await api.post('/tasks', body);
+      toast('Задача создана');
+    }
+    load();
+  };
+
+  const del = async (id) => {
+    await api.del(`/tasks/${id}`);
+    setTasks(p => p.filter(t => t._id !== id));
+    toast('Задача удалена', 'error');
+  };
+
+  const move = async (task, status) => {
+    await api.put(`/tasks/${task._id}`, { status });
+    load();
+  };
+
+  const filtered = tasks.filter(t => {
+    if (filter !== 'all' && t.priority !== filter) return false;
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const cols = [
+    { key: 'todo', label: 'К выполнению', color: '#6b6b80' },
+    { key: 'in_progress', label: 'В работе', color: '#7c6af7' },
+    { key: 'review', label: 'На проверке', color: '#fbbf24' },
+    { key: 'done', label: 'Готово', color: '#34d399' },
+  ];
+
+  const priorityLabels = { low: 'Низкий', medium: 'Средний', high: 'Высокий', critical: 'Критический' };
+
+  return (
+    <>
+      <div className="topbar">
+        <div>
+          <div className="page-title">Задачи</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Хранятся в <span style={{color:'var(--green)'}}>MongoDB</span></div>
+        </div>
+        <div className="topbar-right">
+          <div className="db-info"><div className="db-info-dot" style={{background:'var(--green)'}} />MongoDB</div>
+          <button className="btn-sm primary" onClick={() => setModal('new')}><Icon name="plus" />Новая задача</button>
+        </div>
+      </div>
+      <div className="content">
+        <div className="filters">
+          {[
+            { key: 'all', label: 'Все приоритеты' },
+            { key: 'low', label: 'Низкий' },
+            { key: 'medium', label: 'Средний' },
+            { key: 'high', label: 'Высокий' },
+            { key: 'critical', label: 'Критический' },
+          ].map(f => <button key={f.key} className={`filter-btn ${filter===f.key?'active':''}`} onClick={()=>setFilter(f.key)}>{f.label}</button>)}
+          <input className="search-input" placeholder="🔍 Поиск задач..." value={search} onChange={e=>setSearch(e.target.value)} />
+        </div>
+        {loading ? <div className="loading-wrap"><div className="spinner" /></div> : (
+          <div className="kanban">
+            {cols.map(col => {
+              const colTasks = filtered.filter(t => t.status === col.key);
+              return (
+                <div key={col.key} className="kanban-col">
+                  <div className="col-header">
+                    <div className="col-title"><div className="col-dot" style={{background:col.color}} />{col.label}</div>
+                    <div className="col-count">{colTasks.length}</div>
+                  </div>
+                  {colTasks.length === 0 && <div style={{textAlign:'center',padding:'20px 0',color:'var(--muted)',fontSize:13}}>Пусто</div>}
+                  {colTasks.map(task => (
+                    <div key={task._id} className={`task-card p-${task.priority}`}>
+                      <div className="task-actions">
+                        <button className="task-action-btn edit" onClick={() => setModal(task)}><Icon name="edit" /></button>
+                        <button className="task-action-btn" onClick={() => del(task._id)}><Icon name="trash" /></button>
+                      </div>
+                      <div className="task-title">{task.title}</div>
+                      <div className="task-meta">
+                        <span className={`tag priority-tag priority-${task.priority}`}>{priorityLabels[task.priority] || task.priority}</span>
+                        {task.tags?.map(tag => <span key={tag} className="tag" style={{background:'#7c6af720',color:'var(--accent)'}}>{tag}</span>)}
+                      </div>
+                      {task.projectId && <div className="task-date" style={{marginTop:6}}>📁 {task.projectId.name || 'Проект'}</div>}
+                      {task.dueDate && <div className="task-date">📅 {new Date(task.dueDate).toLocaleDateString('ru-RU')}</div>}
+                      {col.key !== 'done' && (
+                        <div style={{display:'flex',gap:4,marginTop:10,paddingLeft:8,flexWrap:'wrap'}}>
+                          {cols.filter(c=>c.key!==col.key).map(c=>(
+                            <button key={c.key} onClick={()=>move(task,c.key)} style={{fontSize:10,padding:'3px 7px',borderRadius:6,border:`1px solid ${c.color}40`,background:`${c.color}15`,color:c.color,cursor:'pointer'}}>→ {c.label}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {modal && <TaskModal task={modal === 'new' ? null : modal} projects={projects} onClose={() => setModal(null)} onSave={save} />}
+    </>
+  );
+}
+
+// ─── Projects View ─────────────────────────────────────────────
+function ProjectsView({ projects, loadProjects }) {
+  const [modal, setModal] = useState(false);
+
+  const create = async (body) => {
+    await api.post('/projects', body);
+    toast('Проект создан');
+    loadProjects();
+  };
+  const del = async (id) => {
+    await api.del(`/projects/${id}`);
+    toast('Проект удалён', 'error');
+    loadProjects();
+  };
+
+  const statusLabels = { active: 'Активный', archived: 'Архив', completed: 'Завершён' };
+
+  return (
+    <>
+      <div className="topbar">
+        <div>
+          <div className="page-title">Проекты</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Хранятся в <span style={{color:'var(--green)'}}>MongoDB</span></div>
+        </div>
+        <div className="topbar-right">
+          <div className="db-info"><div className="db-info-dot" style={{background:'var(--green)'}} />MongoDB</div>
+          <button className="btn-sm primary" onClick={() => setModal(true)}><Icon name="plus" />Новый проект</button>
+        </div>
+      </div>
+      <div className="content">
+        {projects.length === 0 ? (
+          <div className="empty">
+            <Icon name="projects" />
+            <div className="empty-title">Проектов пока нет</div>
+            <div style={{fontSize:13,marginTop:4}}>Создайте первый проект для организации задач</div>
+          </div>
+        ) : (
+          <div className="projects-grid">
+            {projects.map(p => (
+              <div key={p._id} className="project-card" style={{'--c': p.color}}>
+                <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:p.color,borderRadius:'14px 14px 0 0'}} />
+                <div className="project-name">{p.name}</div>
+                <div className="project-desc">{p.description || 'Описание не указано'}</div>
+                <div className="project-stats">
+                  <div className="project-stat">Задач: <span>{p.taskCount || 0}</span></div>
+                  <div className="project-stat">Статус: <span style={{color:p.status==='active'?'var(--green)':'var(--muted)'}}>{statusLabels[p.status] || p.status}</span></div>
+                </div>
+                <button onClick={() => del(p._id)} style={{position:'absolute',top:14,right:14,background:'none',border:'none',color:'var(--muted)',cursor:'pointer',opacity:.6}} title="Удалить">
+                  <Icon name="trash" style={{width:14,height:14}} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {modal && <ProjectModal onClose={() => setModal(false)} onSave={create} />}
+    </>
+  );
+}
+
+// ─── Stats View ────────────────────────────────────────────────
+function StatsView({ user }) {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    api.get('/tasks/stats').then(r => setStats(r));
+  }, []);
+
+  if (!stats) return <div className="loading-wrap"><div className="spinner" /></div>;
+
+  const byStatus = Object.fromEntries((stats.byStatus||[]).map(s => [s._id, s.count]));
+  const total = Object.values(byStatus).reduce((a,b)=>a+b,0);
+
+  const priorityLabels = { low: 'Низкий', medium: 'Средний', high: 'Высокий', critical: 'Критический' };
+
+  return (
+    <>
+      <div className="topbar">
+        <div>
+          <div className="page-title">Статистика</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Из <span style={{color:'var(--green)'}}>MongoDB</span> + <span style={{color:'var(--blue)'}}>SQLite</span></div>
+        </div>
+        <div className="topbar-right">
+          <div className="db-info"><div className="db-info-dot" style={{background:'var(--green)'}} />MongoDB</div>
+          <div className="db-info"><div className="db-info-dot" style={{background:'var(--blue)'}} />SQLite</div>
+        </div>
+      </div>
+      <div className="content">
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:14,padding:16,marginBottom:24,display:'flex',gap:20,flexWrap:'wrap'}}>
+          <div style={{flex:1,minWidth:200}}>
+            <div style={{fontSize:12,color:'var(--muted)',marginBottom:4}}>📦 MongoDB (Задачи и Проекты)</div>
+            <div style={{fontSize:13,color:'var(--text)'}}>Гибкое документное хранилище — идеально для задач с динамическими полями, метками и вложенными данными</div>
+          </div>
+          <div style={{flex:1,minWidth:200}}>
+            <div style={{fontSize:12,color:'var(--muted)',marginBottom:4}}>🗃️ SQLite (Пользователи и Сессии)</div>
+            <div style={{fontSize:13,color:'var(--text)'}}>Реляционное хранилище — отлично подходит для структурированных данных пользователей с внешними ключами</div>
+          </div>
+        </div>
+
+        <div className="stats-grid">
+          <div className="stat-card"><div className="stat-label">Всего задач</div><div className="stat-num" style={{color:'var(--accent)'}}>{total}</div><div className="stat-sub">из MongoDB</div></div>
+          <div className="stat-card"><div className="stat-label">Выполнено</div><div className="stat-num" style={{color:'var(--green)'}}>{byStatus.done||0}</div><div className="stat-sub">{total ? Math.round((byStatus.done||0)/total*100) : 0}% завершено</div></div>
+          <div className="stat-card"><div className="stat-label">В работе</div><div className="stat-num" style={{color:'var(--accent2)'}}>{byStatus.in_progress||0}</div><div className="stat-sub">активных задач</div></div>
+          <div className="stat-card"><div className="stat-label">К выполнению</div><div className="stat-num" style={{color:'var(--yellow)'}}>{byStatus.todo||0}</div><div className="stat-sub">ожидающих задач</div></div>
+        </div>
+
+        <div style={{marginBottom:24}}>
+          <div style={{fontSize:13,fontFamily:'var(--font-head)',fontWeight:700,marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+            <div className="db-info-dot" style={{background:'var(--blue)',width:8,height:8,borderRadius:'50%',animation:'pulse 2s infinite'}} />
+            Статистика пользователя (SQLite)
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
+            {[
+              {label:'Создано задач', val: stats.userStats?.tasks_created||0, color:'var(--accent)'},
+              {label:'Выполнено задач', val: stats.userStats?.tasks_completed||0, color:'var(--green)'},
+              {label:'Создано проектов', val: stats.userStats?.projects_created||0, color:'var(--blue)'},
+            ].map(s=>(
+              <div key={s.label} className="stat-card">
+                <div className="stat-label">{s.label}</div>
+                <div className="stat-num" style={{color:s.color}}>{s.val}</div>
+                <div className="stat-sub">хранится в SQLite</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{fontSize:13,fontFamily:'var(--font-head)',fontWeight:700,marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <div className="db-info-dot" style={{background:'var(--green)',width:8,height:8,borderRadius:'50%',animation:'pulse 2s infinite'}} />
+          Распределение по приоритетам (MongoDB)
+        </div>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          {(stats.byPriority||[]).map(p=>(
+            <div key={p._id} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 20px',minWidth:120}}>
+              <div style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>{priorityLabels[p._id] || p._id}</div>
+              <div style={{fontFamily:'var(--font-head)',fontSize:28,fontWeight:800}}>{p.count}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── App ───────────────────────────────────────────────────────
+function App() {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState('tasks');
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    const t = localStorage.getItem('token');
+    if (t) api.get('/auth/me').then(r => r.user && setUser(r.user));
+  }, []);
+
+  const loadProjects = useCallback(async () => {
+    const res = await api.get('/projects');
+    setProjects(Array.isArray(res) ? res : []);
+  }, []);
+
+  useEffect(() => { if (user) loadProjects(); }, [user]);
+
+  const logout = () => { localStorage.removeItem('token'); setUser(null); };
+
+  if (!user) return <><AuthPage onLogin={u => { setUser(u); }} /><Toasts /></>;
+
+  const initials = user.username?.slice(0,2).toUpperCase() || '??';
+
+  return (
+    <>
+      <div className="app">
+        <div className="sidebar">
+          <div className="sidebar-logo">Task<span>Flow</span></div>
+          <div className="nav-section">Меню</div>
+          {[
+            { key: 'tasks', icon: 'tasks', label: 'Задачи' },
+            { key: 'projects', icon: 'projects', label: 'Проекты' },
+            { key: 'stats', icon: 'stats', label: 'Статистика' },
+          ].map(n => (
+            <div key={n.key} className={`nav-item ${page===n.key?'active':''}`} onClick={() => setPage(n.key)}>
+              <Icon name={n.icon} />{n.label}
+            </div>
+          ))}
+          <div className="nav-section" style={{marginTop:16}}>Базы данных</div>
+          <div className="nav-item" style={{cursor:'default'}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite',flexShrink:0}} />
+            <span style={{fontSize:12}}>MongoDB</span>
+          </div>
+          <div className="nav-item" style={{cursor:'default'}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:'var(--blue)',animation:'pulse 2s infinite',flexShrink:0}} />
+            <span style={{fontSize:12}}>SQLite</span>
+          </div>
+          <div className="sidebar-bottom">
+            <div className="user-card">
+              <div className="avatar" style={{background: user.avatar_color||'#7c6af7'}}>{initials}</div>
+              <div style={{overflow:'hidden'}}>
+                <div className="user-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.username}</div>
+                <div className="user-email" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.email}</div>
+              </div>
+            </div>
+            <button className="logout-btn" onClick={logout}>
+              <Icon name="logout" style={{width:12,height:12,display:'inline',marginRight:6}} />Выйти
+            </button>
+          </div>
+        </div>
+        <div className="main">
+          {page === 'tasks' && <TasksView projects={projects} />}
+          {page === 'projects' && <ProjectsView projects={projects} loadProjects={loadProjects} />}
+          {page === 'stats' && <StatsView user={user} />}
+        </div>
+      </div>
+      <Toasts />
+    </>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
